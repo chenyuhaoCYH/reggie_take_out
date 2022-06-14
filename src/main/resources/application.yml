@@ -18,6 +18,9 @@ spring:
     port: 6379
     host: localhost
     database: 0
+  cache:
+    redis:
+      time-to-live: 180000 # 缓存数据过期时间180秒
 # 配置mp
 mybatis-plus:
   configuration:
