@@ -18,7 +18,6 @@ spring:
     port: 6379
     host: localhost
     database: 0
-    password: 2222
 # 配置mp
 mybatis-plus:
   configuration:

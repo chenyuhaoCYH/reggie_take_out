@@ -4,20 +4,19 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.itheima.reggie.common.R;
 import com.itheima.reggie.entity.User;
 import com.itheima.reggie.service.UserService;
-import com.itheima.reggie.utils.SMSUtils;
 import com.itheima.reggie.utils.ValidateCodeUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.logging.log4j.util.Strings;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.util.StringUtils;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpSession;
-import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @RestController
 @RequestMapping("/user")
@@ -26,6 +25,9 @@ public class UserController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private RedisTemplate<String,String> redisTemplate;
 
     /**
      * 发送手机短信验证码
@@ -43,8 +45,9 @@ public class UserController {
             log.info(code);
             //发送短信验证码
 //            SMSUtils.sendMessage("瑞吉外卖","",phone,code);
-
-            session.setAttribute(phone,code);
+//            session.setAttribute(phone,code);
+            //将生成验证码缓存到redis中并设置有效期5分钟
+            redisTemplate.opsForValue().set(phone,code,5, TimeUnit.MINUTES);
             return R.success("发送成功");
         }
         return R.error("发送失败");
@@ -52,10 +55,15 @@ public class UserController {
 
     @PostMapping("/login")
     public R<User> login(@RequestBody Map<String,String> map,HttpSession session){
-        String cur_code = map.get("code");
-        String code = (String) session.getAttribute(map.get("phone"));
+        String phone = map.get("phone");
 
-//        if (code!=null&&code.equals(cur_code)){
+        String cur_code = map.get("code");
+        cur_code="1234";
+//        String code = (String) session.getAttribute();
+        String code = redisTemplate.opsForValue().get(phone);
+        log.info(code);
+
+        if (code!=null&&code.equals(cur_code)){
             LambdaQueryWrapper<User> queryWrapper=new LambdaQueryWrapper<>();
             queryWrapper.eq(User::getPhone,map.get("phone"));
 
@@ -68,9 +76,11 @@ public class UserController {
                 userService.save(user);
             }
             session.setAttribute("user",user.getId());
+            //登陆成功，删除验证码
+            redisTemplate.delete(phone);
             return R.success(user);
-//        }
-//        return R.error("登陆失败");
+        }
+        return R.error("登陆失败");
     }
 
 }
