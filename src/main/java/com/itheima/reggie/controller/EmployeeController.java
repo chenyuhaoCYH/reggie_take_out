@@ -9,6 +9,8 @@ import com.itheima.reggie.service.EmployeeService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.logging.log4j.util.Strings;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.util.DigestUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -74,6 +76,7 @@ public class EmployeeController {
      * @return
      */
     @PostMapping
+    @CacheEvict(value = "employee",allEntries = true)
     public R<String> addEmployee(HttpServletRequest request,@RequestBody Employee employee){
         log.info("新增员工:{}",employee.toString());
         String password = DigestUtils.md5DigestAsHex("123456".getBytes());
@@ -95,6 +98,7 @@ public class EmployeeController {
      * 分页查询
      */
     @GetMapping("/page")
+    @Cacheable(value = "employee",key = "#result+'_'+#page+'_'+#pageSize")
     public R<Page<Employee>> page(int page,int pageSize,String name){
         log.info("page={},pageSize={},name={}",page,pageSize,name);
 
@@ -116,6 +120,7 @@ public class EmployeeController {
      * 修改员工信息
      */
     @PutMapping
+    @CacheEvict(value = "employee",allEntries = true)
     public R<String> update(@RequestBody Employee employee,HttpServletRequest request){
 //        employee.setUpdateTime(LocalDateTime.now());
 //        employee.setUpdateUser((Long) request.getSession().getAttribute("employee"));
@@ -130,6 +135,7 @@ public class EmployeeController {
      * 根据id查询
      */
     @GetMapping("/{id}")
+    @Cacheable(value = "employee",key = "'_'+#id")
     public R<Employee> getById(@PathVariable("id") Long id){
         Employee byId = employeeService.getById(id);
         if (byId==null)
